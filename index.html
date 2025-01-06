@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image to PDF Converter</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+
+ :root {
+    --bg-color: #2c2c2c;
+    --card-bg-color: #333;
+    --button-color: #6c5ce7;
+    --button-hover-color: #5a4ec2;
+    --text-color: #ffffff;
+    --secondary-text-color: #888;
+    --preview-border: #444;
+    --animation-speed: 0.3s;
+    --input-border-color: #444;
+    --input-hover-color: #555;
+    --footer-bg-color: #222;
+    --gradient-color: linear-gradient(45deg, #6170fb, #57babf);
+  }
+
+  :root.light-mode {
+  --bg-color: linear-gradient(135deg, #a8d5ba, #d3e9d7); /* Soft greenish gradient */
+  --card-bg-color: #d1f8e4; /* Light greenish card background */
+  --button-color: #2a6b47; /* Green color for buttons */
+  --button-hover-color: #4b8c57; /* Slightly darker green for hover */
+  --text-color: #3a5a40; /* Dark greenish text */
+  --secondary-text-color: #5d7d68;
+  --preview-border: #d2e6d1; /* Light greenish border */
+  --footer-bg-color: #d0f8e1; /* Greenish footer */
+  --gradient-color: linear-gradient(45deg, #6fae6d, #98d5b2); /* Green gradient */
+}
+
+
+  body {
+    font-family: 'Poppins', Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    transition: background-color var(--animation-speed);
+  }
+
+    h1 {
+      font-size: 2.8rem;
+      margin-bottom: 20px;
+      color: transparent;
+      background: var(--gradient-color);
+      -webkit-background-clip: text;
+      background-clip: text;
+      text-transform: uppercase;
+    }
+
+    input[type="file"] {
+      margin: 20px 0;
+      padding: 12px;
+      background: var(--card-bg-color);
+      border: 2px solid var(--input-border-color);
+      color: var(--text-color);
+      border-radius: 8px;
+      transition: border-color var(--animation-speed), background var(--animation-speed);
+      cursor: pointer;
+      width: 250px;
+    }
+
+    input[type="file"]:hover {
+      background: var(--input-hover-color);
+      border-color: var(--button-color);
+    }
+
+    #preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      margin: 20px 0;
+    }
+
+    .preview-img {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border: 2px solid var(--preview-border);
+      border-radius: 8px;
+      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+      transition: transform var(--animation-speed), box-shadow var(--animation-speed);
+    }
+
+    .preview-img:hover {
+      transform: scale(1.1);
+      box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    button {
+      background: var(--gradient-color);
+      color:black;
+      border: none;
+      padding: 14px 28px;
+      font-size: 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 10px 5px;
+      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+      transition: background var(--animation-speed), transform var(--animation-speed), box-shadow var(--animation-speed);
+    }
+
+    button:hover {
+      background: var(--button-hover-color);
+      transform: translateY(-3px);
+      box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    button:active {
+      transform: translateY(1px);
+      box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    #darkModeToggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--card-bg-color);
+      border: 1px solid var(--preview-border);
+      padding: 10px 18px;
+      font-size: 16px;
+      border-radius: 50px;
+      transition: background var(--animation-speed), color var(--animation-speed);
+      color: #67adcf;
+    }
+
+    #darkModeToggle:hover {
+      background: var(--button-color);
+      color: var(--bg-color);
+    }
+
+    footer {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: var(--footer-bg-color);
+      font-size: 1rem;
+      color: var(--secondary-text-color);
+      width: 100%;
+      text-align: center;
+      border-top: 1px solid var(--preview-border);
+    }
+  </style>
+</head>
+<body>
+  <h1>Image to PDF</h1>
+  <input type="file" id="imageInput" multiple accept="image/*">
+  <div id="preview"></div>
+  <button id="convertButton">Convert to PDF</button>
+  <button id="darkModeToggle">
+    <i class="fas fa-sun" id="sunIcon"></i>
+    <i class="fas fa-moon" id="moonIcon"></i>
+  </button>
+  
+
+  <footer>© 2025 Your Website | Designed with ❤️</footer>
+
+  <script>
+    const imageInput = document.getElementById('imageInput');
+    const preview = document.getElementById('preview');
+    const convertButton = document.getElementById('convertButton');
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const { jsPDF } = window.jspdf;
+    let images = [];
+
+    // Load images into the preview area
+    function loadImages() {
+      preview.innerHTML = '';
+      images.forEach((file) => {
+        const img = document.createElement('img');
+        img.src = file;
+        img.className = 'preview-img';
+        preview.appendChild(img);
+      });
+    }
+
+    // Handle image input change
+    imageInput.addEventListener('change', (event) => {
+      images = Array.from(event.target.files).map((file) => {
+        return URL.createObjectURL(file);
+      });
+      loadImages();
+    });
+
+    // Convert images to PDF and save it
+convertButton.addEventListener('click', () => {
+  if (images.length === 0) {
+    alert('Please upload images first!');
+    return;
+  }
+
+  const pdf = new jsPDF();
+  let promises = [];
+
+  images.forEach((file, index) => {
+    promises.push(
+      new Promise((resolve) => {
+        const img = new Image();
+        img.src = file;
+        img.onload = () => {
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
+
+          // Calculate image dimensions to maintain aspect ratio
+          let imgWidth = img.width;
+          let imgHeight = img.height;
+          const ratio = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
+          imgWidth *= ratio;
+          imgHeight *= ratio;
+
+          // Calculate x and y for center alignment
+          const x = (pageWidth - imgWidth) / 2;
+          const y = (pageHeight - imgHeight) / 2;
+
+          if (index > 0) pdf.addPage();
+          pdf.addImage(img, 'JPEG', x, y, imgWidth, imgHeight);
+          resolve();
+        };
+      })
+    );
+  });
+
+  Promise.all(promises).then(() => {
+    // Prompt to save the file
+    const fileName = prompt("Enter the name of the PDF file:", "images.pdf");
+    if (fileName) {
+      pdf.save(fileName.endsWith(".AKpdf") ? fileName : `${fileName}.pdf`);
+    }
+  });
+});
+
+   // Toggle Dark/Light Mode
+darkModeToggle.addEventListener('click', () => {
+  const body = document.body;
+  const sunIcon = document.getElementById('sunIcon');
+  const moonIcon = document.getElementById('moonIcon');
+  
+  // Check if the light mode class is already applied
+  if (body.classList.contains('light-mode')) {
+    // Switch to dark mode
+    body.classList.remove('light-mode');
+    document.documentElement.style.setProperty('--bg-color', '#2c2c2c');
+    document.documentElement.style.setProperty('--text-color', '#ffffff');
+    document.documentElement.style.setProperty('--preview-border', '#444');
+    document.documentElement.style.setProperty('--card-bg-color', '#333');
+    document.documentElement.style.setProperty('--footer-bg-color', '#222');
+    
+    // Change icons to moon (dark mode)
+    sunIcon.style.display = 'none';
+    moonIcon.style.display = 'block';
+  } else {
+    // Switch to light mode
+    body.classList.add('light-mode');
+    document.documentElement.style.setProperty('--bg-color', '#f5f5f5');
+    document.documentElement.style.setProperty('--text-color', '#3a5a40');
+    document.documentElement.style.setProperty('--preview-border', '#ddd');
+    document.documentElement.style.setProperty('--card-bg-color', '#ffffff');
+    document.documentElement.style.setProperty('--footer-bg-color', '#eeeeee');
+    
+    // Change icons to sun (light mode)
+    sunIcon.style.display = 'block';
+    moonIcon.style.display = 'none';
+  }
+});
+
+// Initially hide the sun icon if dark mode is active
+window.onload = () => {
+  const sunIcon = document.getElementById('sunIcon');
+  const moonIcon = document.getElementById('moonIcon');
+  
+  if (document.body.classList.contains('light-mode')) {
+    sunIcon.style.display = 'block';
+    moonIcon.style.display = 'none';
+  } else {
+    sunIcon.style.display = 'none';
+    moonIcon.style.display = 'block';
+  }
+};
+
+
+  </script>
+</body>
+</html>
