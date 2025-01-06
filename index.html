@@ -235,9 +235,9 @@ convertButton.addEventListener('click', () => {
 
   Promise.all(promises).then(() => {
     // Prompt to save the file
-    const fileName = prompt("Enter the name of the PDF file:", "images.pdf");
+    const fileName = prompt("Enter the name of the PDF file:", "images");
     if (fileName) {
-      pdf.save(fileName.endsWith(".AKpdf") ? fileName : `${fileName}.pdf`);
+      pdf.save(fileName.endsWith(".pdf") ? fileName : `${fileName}.AKpdf`);
     }
   });
 });
