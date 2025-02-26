@@ -79,7 +79,7 @@
     }
 
     #preview {
-      display: flex;
+      display: none; /* Initially hidden */
       flex-wrap: wrap;
       gap: 15px;
       justify-content: center;
@@ -88,6 +88,13 @@
       padding: 20px;
       border: 2px dashed var(--preview-border);
       border-radius: 8px;
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .preview-img-container {
+      position: relative;
+      width: 120px;
+      margin: 5px;
     }
 
     .preview-img {
@@ -98,12 +105,32 @@
       border-radius: 8px;
       box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
       transition: transform var(--animation-speed), box-shadow var(--animation-speed);
-      cursor: move; /* Show move cursor */
+      cursor: move;
     }
 
-    .preview-img.dragging {
-      opacity: 0.5;
-      transform: scale(1.05);
+    .image-controls {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      display: flex;
+      gap: 5px;
+    }
+
+    .move-btn {
+      background: var(--card-bg-color);
+      border: 1px solid var(--preview-border);
+      border-radius: 50%;
+      width: 25px;
+      height: 25px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-color);
+    }
+
+    .move-btn:hover {
+      background: var(--button-color);
     }
 
     button {
@@ -224,15 +251,50 @@
 
     // Update loadImages function
     function loadImages() {
+      preview.style.display = 'flex'; // Show preview area when images are loaded
       preview.innerHTML = '';
-      images.forEach((file) => {
+      images.forEach((file, index) => {
+        const container = document.createElement('div');
+        container.className = 'preview-img-container';
+
         const img = document.createElement('img');
         img.src = file;
         img.className = 'preview-img';
         img.draggable = true;
-        preview.appendChild(img);
+
+        const controls = document.createElement('div');
+        controls.className = 'image-controls';
+
+        // Move left button
+        if (index > 0) {
+          const moveLeftBtn = document.createElement('button');
+          moveLeftBtn.className = 'move-btn';
+          moveLeftBtn.innerHTML = '←';
+          moveLeftBtn.onclick = () => moveImage(index, index - 1);
+          controls.appendChild(moveLeftBtn);
+        }
+
+        // Move right button
+        if (index < images.length - 1) {
+          const moveRightBtn = document.createElement('button');
+          moveRightBtn.className = 'move-btn';
+          moveRightBtn.innerHTML = '→';
+          moveRightBtn.onclick = () => moveImage(index, index + 1);
+          controls.appendChild(moveRightBtn);
+        }
+
+        container.appendChild(img);
+        container.appendChild(controls);
+        preview.appendChild(container);
       });
       makePreviewSortable();
+    }
+
+    function moveImage(fromIndex, toIndex) {
+      const temp = images[fromIndex];
+      images.splice(fromIndex, 1);
+      images.splice(toIndex, 0, temp);
+      loadImages();
     }
 
     // Handle image input change
@@ -253,33 +315,35 @@
       const pdf = new jsPDF();
       let promises = [];
 
-      // Get images in current order from preview
-      const orderedImages = Array.from(preview.querySelectorAll('.preview-img')).map(img => img.src);
-
-      orderedImages.forEach((file, index) => {
+      // Get images in current order
+      images.forEach((file, index) => {
         promises.push(
           new Promise((resolve) => {
             const img = new Image();
             img.src = file;
             img.onload = () => {
+              // Add new page for each image except first
+              if (index > 0) {
+                pdf.addPage();
+              }
+
               const pageWidth = pdf.internal.pageSize.getWidth();
               const pageHeight = pdf.internal.pageSize.getHeight();
 
-              // Add black background
+              // Set black background
               pdf.setFillColor(0, 0, 0);
-              if (index > 0) pdf.addPage();
               pdf.rect(0, 0, pageWidth, pageHeight, 'F');
 
-              // Calculate image dimensions to fit page while maintaining aspect ratio
+              // Calculate dimensions while maintaining aspect ratio
               const imgRatio = img.width / img.height;
               const pageRatio = pageWidth / pageHeight;
               let finalWidth, finalHeight;
 
               if (imgRatio > pageRatio) {
-                finalWidth = pageWidth - 20; // 10px margin on each side
+                finalWidth = pageWidth - 20;
                 finalHeight = finalWidth / imgRatio;
               } else {
-                finalHeight = pageHeight - 20; // 10px margin on each side
+                finalHeight = pageHeight - 20;
                 finalWidth = finalHeight * imgRatio;
               }
 
