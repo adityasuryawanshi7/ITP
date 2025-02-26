@@ -84,6 +84,10 @@
       gap: 15px;
       justify-content: center;
       margin: 20px 0;
+      min-height: 150px;
+      padding: 20px;
+      border: 2px dashed var(--preview-border);
+      border-radius: 8px;
     }
 
     .preview-img {
@@ -94,11 +98,12 @@
       border-radius: 8px;
       box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
       transition: transform var(--animation-speed), box-shadow var(--animation-speed);
+      cursor: move; /* Show move cursor */
     }
 
-    .preview-img:hover {
-      transform: scale(1.1);
-      box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.2);
+    .preview-img.dragging {
+      opacity: 0.5;
+      transform: scale(1.05);
     }
 
     button {
@@ -176,15 +181,58 @@
     const { jsPDF } = window.jspdf;
     let images = [];
 
-    // Load images into the preview area
+    // Make preview area sortable
+    function makePreviewSortable() {
+      const previewArea = document.getElementById('preview');
+      
+      let draggedItem = null;
+
+      preview.addEventListener('dragstart', (e) => {
+        draggedItem = e.target;
+        e.target.classList.add('dragging');
+      });
+
+      preview.addEventListener('dragend', (e) => {
+        e.target.classList.remove('dragging');
+      });
+
+      preview.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(preview, e.clientY);
+        const draggable = document.querySelector('.dragging');
+        if (afterElement == null) {
+          preview.appendChild(draggable);
+        } else {
+          preview.insertBefore(draggable, afterElement);
+        }
+      });
+
+      function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.preview-img:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+          const box = child.getBoundingClientRect();
+          const offset = y - box.top - box.height / 2;
+          if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+          } else {
+            return closest;
+          }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+      }
+    }
+
+    // Update loadImages function
     function loadImages() {
       preview.innerHTML = '';
       images.forEach((file) => {
         const img = document.createElement('img');
         img.src = file;
         img.className = 'preview-img';
+        img.draggable = true;
         preview.appendChild(img);
       });
+      makePreviewSortable();
     }
 
     // Handle image input change
@@ -195,52 +243,64 @@
       loadImages();
     });
 
-    // Convert images to PDF and save it
-convertButton.addEventListener('click', () => {
-  if (images.length === 0) {
-    alert('Please upload images first!');
-    return;
-  }
+    // Update convert button click handler
+    convertButton.addEventListener('click', () => {
+      if (images.length === 0) {
+        alert('Please upload images first!');
+        return;
+      }
 
-  const pdf = new jsPDF();
-  let promises = [];
+      const pdf = new jsPDF();
+      let promises = [];
 
-  images.forEach((file, index) => {
-    promises.push(
-      new Promise((resolve) => {
-        const img = new Image();
-        img.src = file;
-        img.onload = () => {
-          const pageWidth = pdf.internal.pageSize.getWidth();
-          const pageHeight = pdf.internal.pageSize.getHeight();
+      // Get images in current order from preview
+      const orderedImages = Array.from(preview.querySelectorAll('.preview-img')).map(img => img.src);
 
-          // Calculate image dimensions to maintain aspect ratio
-          let imgWidth = img.width;
-          let imgHeight = img.height;
-          const ratio = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
-          imgWidth *= ratio;
-          imgHeight *= ratio;
+      orderedImages.forEach((file, index) => {
+        promises.push(
+          new Promise((resolve) => {
+            const img = new Image();
+            img.src = file;
+            img.onload = () => {
+              const pageWidth = pdf.internal.pageSize.getWidth();
+              const pageHeight = pdf.internal.pageSize.getHeight();
 
-          // Calculate x and y for center alignment
-          const x = (pageWidth - imgWidth) / 2;
-          const y = (pageHeight - imgHeight) / 2;
+              // Add black background
+              pdf.setFillColor(0, 0, 0);
+              if (index > 0) pdf.addPage();
+              pdf.rect(0, 0, pageWidth, pageHeight, 'F');
 
-          if (index > 0) pdf.addPage();
-          pdf.addImage(img, 'JPEG', x, y, imgWidth, imgHeight);
-          resolve();
-        };
-      })
-    );
-  });
+              // Calculate image dimensions to fit page while maintaining aspect ratio
+              const imgRatio = img.width / img.height;
+              const pageRatio = pageWidth / pageHeight;
+              let finalWidth, finalHeight;
 
-  Promise.all(promises).then(() => {
-    // Prompt to save the file
-    const fileName = prompt("Enter the name of the PDF file:", "images");
-    if (fileName) {
-      pdf.save(fileName.endsWith("AKpdf") ? fileName : `${fileName+'AK'}.pdf`);
-    }
-  });
-});
+              if (imgRatio > pageRatio) {
+                finalWidth = pageWidth - 20; // 10px margin on each side
+                finalHeight = finalWidth / imgRatio;
+              } else {
+                finalHeight = pageHeight - 20; // 10px margin on each side
+                finalWidth = finalHeight * imgRatio;
+              }
+
+              // Center the image
+              const x = (pageWidth - finalWidth) / 2;
+              const y = (pageHeight - finalHeight) / 2;
+
+              pdf.addImage(img, 'JPEG', x, y, finalWidth, finalHeight);
+              resolve();
+            };
+          })
+        );
+      });
+
+      Promise.all(promises).then(() => {
+        const fileName = prompt("Enter the name of the PDF file:", "images");
+        if (fileName) {
+          pdf.save(fileName.endsWith("AKpdf") ? fileName : `${fileName+'AK'}.pdf`);
+        }
+      });
+    });
 
    // Toggle Dark/Light Mode
 darkModeToggle.addEventListener('click', () => {
